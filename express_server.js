@@ -1,9 +1,10 @@
 const express = require("express");
-const app = express();
-const PORT = 8080; // default port 8080
 const bodyParser = require("body-parser");
 var cookieParser = require('cookie-parser');
-app.use(bodyParser.urlencoded({ extended: true }));
+// var cookieSesssion = require('cookie-session');
+const app = express();
+const PORT = 8080; // default port 8080
+
 const arr = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"];
 
 function generateRandomString(length, arr) {
@@ -18,6 +19,11 @@ function generateRandomString(length, arr) {
 // something is broken with importing this. Need to fix
 //const generateRandomString = require('randomString.js'); 
 
+// ======================  Middleware setup  ================================
+
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(cookieParser());
+app.set('view engine', 'ejs');
 
 // ======================= set up for modules ===================
 const urlDatabase = {
@@ -33,14 +39,20 @@ const usersDatabase = {
   },
 };
 
-app.set('view engine', 'ejs');
-app.use(cookieParser());
+function getUserByEmail(email, usersDatabase) {
+  const keys = Object.keys(usersDatabase);
+  for (let key of keys){
+    const user = usersDatabase[key];
+    if (user.email === email) {
+      return user;
+    }
+  }
+};
+
 
 
 // ===================  Below is page structure =====================
 // changing from current to Most specific --> least specific
-
-
 
 
 //Edit function // below is not strictly necessary;
@@ -60,17 +72,24 @@ app.post(`/urls/:shortURL/edit`, (req, res) => {
 
 //Adding a new get route to allow a form submission
 app.get("/urls/new", (req, res) => {
-  // Step 1 - check th user obj
-  // if (req.cookies[user_id]) {
+  let user_id = req.cookies["user_id"];
+  let user = usersDatabase[user_id];
+  if (!user_id || user_id !== user.id) {
+    res.redirect("/login");
+    return;
+  };
 
-  // }
+  // Step 1 - check th user obj
+  for (let users in usersDatabase) {
+    if (usersDatabase[users] !== req.cookies["user_id"]) {
+      res.redirect("/login");
+    }
+  }
   // // Step 2 
   // else {
   //   res.redirect('')
   // }
   // Step 3 - if cookie, pack the user info into a userObj & render usls_new with the obj
-  let user_id = req.cookies["user_id"];
-  let user = usersDatabase[user_id];
   let templateVars = {
     user,
   };
@@ -119,8 +138,21 @@ app.get("/urls", (req, res) => {
   //   urls: urlDatabase,
   //   email: usersDatabase[id].email
   // };
+  // =======================TESTING Below ====================================
+  // ## below just sets a cookie testing 
+  res.cookie("visitor", "guest");
+  console.log("cookies; ", req.cookies.visitor); // But this one is  "guest"
+  console.log("cookies; ", req.cookies.user_id); // why is this undefined ??
+  // probs should delete above visitor cookie
+  // deleted guest cookie on line  248 // does not work as intended
+  // =======================TESTING Above ====================================
   let user_id = req.cookies["user_id"];
   let user = usersDatabase[user_id];
+  // Below blocks access if the user is not logged in;
+  if (!user) {
+    res.redirect("/login");
+    return;
+  }
   // eventually add conditional statement for truthy / falsy of user
 
   const templateVars = {
@@ -148,14 +180,6 @@ app.get("/register", (req, res) =>{
   };
   res.render('register', templateVars);
 })
-
-// const usersDatabase = {
-//   "userRandomID": {
-//     id: "userRandomID",
-//     email: "user@example.com",
-//     password: "123"
-//   },
-// };
 
 // registration data recieved from user
 app.post("/register", (req, res) => {
@@ -207,80 +231,27 @@ app.post("/logout", (req, res) => {
 });
 
 // login user method
-// ### new a Get login /###/  Curently broken
-//#############################################
-// Change this cookie to the global user object
 app.post("/login", (req, res) =>{
-  console.log("this is req.body; ", req.body);
-  const userObject = {
-    id: req.body.user_id,
-    email: req.body.email,
-    password: req.body.password,
+  const email = req.body.email;
+  const password =  req.body.password;
+  console.log("email;", email);
+  console.log("pwd");
+  //Below checks that login details have been entered;
+  if (!email || !password) {
+    res.status(400)
+      .send("Please enter details");
+    return;
   };
-  let found = false;
-  //search the database for a matching email;
-  for (let users in usersDatabase) {
-    if (userObject.email === usersDatabase[users].email && userObject.password !== usersDatabase[users].password){
-      res.status(403)
-        .send("Password Incorrect");
-      return;
-    }
-    // below compares the login password with the password on record for that email
-    if (req.body.email === usersDatabase[users].email && userObject.password === usersDatabase[users].password) {
-      console.log("Existing user");
-      found = true;
-      //Need to set the cookie for that user // 
-      userObject.id = usersDatabase[users].id;
-      res.cookie("user_id", usersDatabase[users].id )
-      let objVar = {
-        user: usersDatabase[users],
-        urls: urlDatabase
-      };
-      res.render("urls_index", objVar);
-    }
-    
-  }
-  
-  for (let user_id in usersDatabase) {
-    if (found === false && userObject.email !== usersDatabase[user_id].email) {
-      res.status(403)
-        .send("User Not Found");
-      return;
-    }
-    // #################
-    // Change logic to give error if password not matching
-    // ################# Note that trying to login without account created does NOT yet have an error message 
-    // if (found === false && userObject.password !== usersDatabase[user_id].password) {
-    //   res.status(403)
-    //     .send("Password incorrect");
-    //   return;
-    // }
-  };
-  
-  console.log("userObject; ", userObject);
-  console.log("database: ", usersDatabase);
-  console.log("req.body.user_id: ", req.body.user_id);
 
-  // res.cookie("user_id", req.body.user_id) //not sure on this yet
-  
-  // Check if  exists in database / might have to remove
-  // const emailTestCase = Object.keys(usersDatabase);
-  // for (const user in emailTestCase) {
-  //   if (usersDatabase[user].email === userObject.email) { // removed req.body.user_id
-  //     userObject = usersDatabase[user];
-  //   }
-  //   console.log(usersDatabase[user]);
-  // }
-  
-  // let actualUser = {
-  //   //userObject,
-  //   urls: urlDatabase,
-  //   email: req.body.email
-  // };
-  console.log(req.body.user_id);
-  // No render in POST ## to edit
-  // res.cookie('user_id',req.body.user_id);
-  // res.render("urls_index", userObject);
+  // Below checks the presence of a user account
+  const user = getUserByEmail(email, usersDatabase);
+  if (!user || user.password !== password) {
+    res.status(403)
+      .send("invalid username or password");
+    return;
+  }
+  res.cookie("user_id", user.id);
+  res.redirect("/urls");  
 });
 
 

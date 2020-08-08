@@ -14,7 +14,7 @@
     <!-- Then do not disply the next -->
     <!-- if email === null, you want to show them login/ register-->
     <!-- login page is givig an error user not defined -->
-    <% if (user !== undefined) { %> <!--  What to change this to?  -->
+    <% if (user) { %> <!--  What to change this to?  -->
       <div>
         <p>Logged in as; <%= user.email %> </p><!--Changed this to the unique email -->
         <form action="/logout" method="POST" class="form-example">

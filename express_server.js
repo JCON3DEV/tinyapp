@@ -27,8 +27,14 @@ app.set('view engine', 'ejs');
 
 // ======================= set up for modules ===================
 const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com"
+  "b2xVn2": { 
+    longURL: "http://www.lighthouselabs.ca",
+    userID:"aJ48lW"
+  },
+  "9sm5xK": {
+    longURL: "http://www.google.com",
+    userID: "aJ48lW"
+  }
 };
 
 const usersDatabase = {
@@ -48,7 +54,17 @@ function getUserByEmail(email, usersDatabase) {
     }
   }
 };
-
+function urlsForUser(id){
+  // implement here
+}
+function getUrlKey(parameter, urlDatabase) {
+  const keys = Object.keys(urlDatabase);
+  for (let key of urlDatabase) {
+    const urlDbKey = urlDatabase[key];
+    if(parameter)
+    return key;
+  }
+}
 
 
 // ===================  Below is page structure =====================
@@ -63,7 +79,7 @@ app.get('/urls/:shortURL/edit', (req,res) =>{
 app.post(`/urls/:shortURL/edit`, (req, res) => {
   const shortId = req.params.shortURL;
   const newLongId = req.body.longURL;
-  urlDatabase[shortId] = newLongId;
+  urlDatabase[shortId]["longURL"] = newLongId;
   console.log(urlDatabase);
   res.redirect('/urls');
 });
@@ -102,6 +118,12 @@ app.post('/urls/:shortURL/delete', (req, res) => {
   res.redirect('/urls/');
 }); 
 
+app.get("/u/:shortURL", (req, res) => {
+  const id = req.params.shortURL;
+  //below redirects to whichever website is associated with the short URL
+  res.redirect(urlDatabase[id]["longURL"]);
+})
+
 //This is the edit page
 app.get("/urls/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
@@ -109,7 +131,7 @@ app.get("/urls/:shortURL", (req, res) => {
   let user = usersDatabase[user_id];
   const templateVars = {
     user,
-    longURL: urlDatabase[shortURL], 
+    longURL: urlDatabase[shortURL]["longURL"], 
     shortURL
   };
   res.render("urls_show", templateVars);
@@ -148,16 +170,17 @@ app.get("/urls", (req, res) => {
   // =======================TESTING Above ====================================
   let user_id = req.cookies["user_id"];
   let user = usersDatabase[user_id];
-  // Below blocks access if the user is not logged in;
+  // // Below blocks access if the user is not logged in;
   if (!user) {
-    res.redirect("/login");
-    return;
-  }
-  // eventually add conditional statement for truthy / falsy of user
-
+      res.redirect("/login");
+      return;
+    }
+    // eventually add conditional statement for truthy / falsy of user
+    
+  
   const templateVars = {
     user,
-    urls: urlDatabase, // Be aware of this. only this object should have urls: as urlDatabase.
+    urls: urlDatabase, // possibly add ["longURL"] // Be aware of this. only this object should have urls: as urlDatabase.
   };
   res.render("urls_index", templateVars);
 });
@@ -168,7 +191,7 @@ app.post("/urls", (req, res) => {
   console.log(req.body);  // Log the POST request body to the console
   const idString = generateRandomString(6, arr);
   // const longURL = urlDatabase[shortURL];
-  urlDatabase[idString] = req.body.longURL;
+  urlDatabase[idString]["longURL"] = req.body.longURL;
   // Below redirects the user to their new short URL address
   res.redirect(`/urls/${idString}`);
 });

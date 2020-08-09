@@ -13,11 +13,7 @@ function generateRandomString(length, arr) {
     ans += arr[Math.floor(Math.random() * arr.length)]; 
   }
   return ans;
-  // alternativly below;
-  // let ans = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 }
-// something is broken with importing this. Need to fix
-//const generateRandomString = require('randomString.js'); 
 
 // ======================  Middleware setup  ================================
 
@@ -34,6 +30,10 @@ const urlDatabase = {
   "9sm5xK": {
     longURL: "http://www.google.com",
     userID: "aJ48lW"
+  },
+  "hj65j8": {
+    longURL: "http://www.google.com",
+    userID: "userRandomID"
   }
 };
 
@@ -54,17 +54,28 @@ function getUserByEmail(email, usersDatabase) {
     }
   }
 };
-function urlsForUser(id){
-  // implement here
-}
-function getUrlKey(parameter, urlDatabase) {
-  const keys = Object.keys(urlDatabase);
-  for (let key of urlDatabase) {
-    const urlDbKey = urlDatabase[key];
-    if(parameter)
-    return key;
+function urlsForUser(id) {
+  let myUrls = {};
+  for (let urlObjKey in urlDatabase){
+    let userId = urlDatabase[urlObjKey].userID;
+    if (userId === id) {
+      myUrls[urlObjKey] = urlDatabase[urlObjKey];
+    }
   }
-}
+  return myUrls;
+};
+// function urlsForUser(id) {
+//   const keys = Object.keys(usersDatabase);
+//   for (let key of keys) {
+//     if (id === usersDatabase[key].id) {
+//       return usersDatabase[key];
+//     }
+//   }
+  // loop through the urlDatabase,
+  // get the user id match instance of, if matches, store the , 
+  // retunr the object in the same structure that the URLDatabse was written
+  // consoloe.log this function to match the structure and purpose it is intended for.
+// };
 
 
 // ===================  Below is page structure =====================
@@ -95,17 +106,6 @@ app.get("/urls/new", (req, res) => {
     return;
   };
 
-  // Step 1 - check th user obj
-  for (let users in usersDatabase) {
-    if (usersDatabase[users] !== req.cookies["user_id"]) {
-      res.redirect("/login");
-    }
-  }
-  // // Step 2 
-  // else {
-  //   res.redirect('')
-  // }
-  // Step 3 - if cookie, pack the user info into a userObj & render usls_new with the obj
   let templateVars = {
     user,
   };
@@ -176,12 +176,15 @@ app.get("/urls", (req, res) => {
       return;
     }
     // eventually add conditional statement for truthy / falsy of user
-    
-  
+  // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  const tempUrlsForUser = urlsForUser(user_id);
+  console.log("tempURLS", tempUrlsForUser);
+  // ###########################
   const templateVars = {
     user,
-    urls: urlDatabase, // possibly add ["longURL"] // Be aware of this. only this object should have urls: as urlDatabase.
+    urls: tempUrlsForUser, // possibly add ["longURL"] // Be aware of this. only this object should have urls: as urlDatabase.
   };
+  console.log(templateVars);
   res.render("urls_index", templateVars);
 });
 
@@ -212,16 +215,12 @@ app.post("/register", (req, res) => {
     email: req.body.email,
     password: req.body.password,
   };
-  console.log("userObject; ", userObject);
-  console.log("database ", usersDatabase);
   // below should check the new input vs the existing database
   for (let user_id in usersDatabase) {
     // console.log("~~~ ########", user_id, userObject.email,usersDatabase[user_id].email);
     if (userObject.email === usersDatabase[user_id].email) {
       res.status(400)
         .send("Email already registered");
-        // 400s if browsers or users fault roughly
-        // 500s server fault
       return;
     }
   };
@@ -233,8 +232,6 @@ app.post("/register", (req, res) => {
   };
 
   usersDatabase[idNum] = userObject;
-  console.log("this is the object; ", usersDatabase[idNum]);
-  console.log(usersDatabase);
   res.cookie('user_id', idNum);
   res.redirect("/urls");
 });
@@ -252,29 +249,64 @@ app.post("/logout", (req, res) => {
   res.clearCookie("user_id");
   res.redirect("/urls");
 });
+////////////////////////////////////////
+// Delete below
+// app.post("/loginrohit", (req, res) =>{
+//   //1. Receive the values
+//   const email = req.body.email;
+//   const password =  req.body.password;
+
+//   //2. if anyone of the values is empty send the response back
+//   if (!email || !password) {
+//     res.status(400).send("Please enter details");
+//   } else{
+//     //it means the email and password were not empty
+//     //Check the email from the database
+//     const user = getUserByEmail(email, usersDatabase);
+//     //if the user name or password were not right
+//     if (!user || user.password !== password) {
+//       res.status(403).send("invalid username or password");
+      
+//     } else{
+//       //if the username and password were right
+//       res.cookie("user_id", user.id);
+//       res.redirect("/urls"); 
+//     }
+
+//   }
+
+ 
+  
+// });
+// //////////////////////////////////////////////////////
+
 
 // login user method
 app.post("/login", (req, res) =>{
+  //1. Receive the values
   const email = req.body.email;
   const password =  req.body.password;
-  console.log("email;", email);
-  console.log("pwd");
-  //Below checks that login details have been entered;
+  // console.log("email;", email);
+  // console.log("pwd");
+  
+  //2. Below checks if the login details are empty, responds w/ error msg
   if (!email || !password) {
     res.status(400)
-      .send("Please enter details");
-    return;
-  };
-
-  // Below checks the presence of a user account
-  const user = getUserByEmail(email, usersDatabase);
-  if (!user || user.password !== password) {
-    res.status(403)
-      .send("invalid username or password");
-    return;
+    .send("Please enter details");
+  } else {
+    // function compares email input by user to the database collection
+    const user = getUserByEmail(email, usersDatabase);
+    // Below checks the presence of a user account & whether pwd is correct
+    if(!user || user.password !== password) {
+      res.status(403)
+        .send("invalid username or password");
+    }
+    else {
+      // if username an pwd are correct;
+      res.cookie("user_id", user.id);
+      res.redirect("/urls");  
   }
-  res.cookie("user_id", user.id);
-  res.redirect("/urls");  
+}
 });
 
 

@@ -27,7 +27,7 @@ const urlDatabase = {
     longURL: "http://www.lighthouselabs.ca",
     userID:"aJ48lW"
   },
-  "9sm5xK": {
+  "s9m5xK": {
     longURL: "http://www.google.com",
     userID: "aJ48lW"
   },
@@ -84,12 +84,19 @@ function urlsForUser(id) {
 
 //Edit function // below is not strictly necessary;
 app.get('/urls/:shortURL/edit', (req,res) =>{
-  res.redirect(`/urls/${req.params.shortURL}`);  
+  // conditional statement check the cookie
+  // if id !== id redirect
+  res.redirect(`/urls/${req.params.shortURL}`);  //dzphht
 });
 
 app.post(`/urls/:shortURL/edit`, (req, res) => {
   const shortId = req.params.shortURL;
   const newLongId = req.body.longURL;
+  
+  if (req.cookies["user_id"] !== req.params.shortURL) {
+    res.redirect("/urls");
+    return;
+  };
   urlDatabase[shortId]["longURL"] = newLongId;
   console.log(urlDatabase);
   res.redirect('/urls');
@@ -108,12 +115,19 @@ app.get("/urls/new", (req, res) => {
 
   let templateVars = {
     user,
+    // longURL: urlDatabase[shortURL]["longURL"], // added TESTING
+    // shortURL // added TESTING
   };
   res.render("urls_new", templateVars);
 });
 
 //Delte method
 app.post('/urls/:shortURL/delete', (req, res) => {
+  // TURN this into a function perhaps boolena return take the redirect as param
+  if (req.cookie["user_id"] !== req.params.shortURL) {
+    res.redirect("/urls");
+    return;
+  };
   delete urlDatabase[req.params.shortURL];
   res.redirect('/urls/');
 }); 
@@ -190,14 +204,33 @@ app.get("/urls", (req, res) => {
 
 // Below accepts the form from /urls/new
 // makes the new widget
+
+// TESTING
 app.post("/urls", (req, res) => {
-  console.log(req.body);  // Log the POST request body to the console
-  const idString = generateRandomString(6, arr);
+  console.log(req.body.longURL);  // Log the POST request body to the console
+  const newShortURL = generateRandomString(6, arr);
   // const longURL = urlDatabase[shortURL];
-  urlDatabase[idString]["longURL"] = req.body.longURL;
+  // beleive this need to be the id
+  urlDatabase[newShortURL] = {
+    longURL : req.body.longURL,
+    userID: req.cookies["user_id"],
+  };
   // Below redirects the user to their new short URL address
-  res.redirect(`/urls/${idString}`);
+  res.redirect(`/urls/${newShortURL}`);
 });
+
+// app.post("/urls", (req, res) => {
+//   console.log(req.body.longURL);  // Log the POST request body to the console
+//   const idString = generateRandomString(6, arr);
+//   // const longURL = urlDatabase[shortURL];
+//   console.log("urlDatabase[idString][\"longURL\"] is; ", urlDatabase[idString]["longURL"]);
+//   // beleive this need to be the id
+//   urlDatabase[idString]["longURL"] = req.body.longURL;
+//   // Below redirects the user to their new short URL address
+//   res.redirect(`/urls/${idString}`);
+// });
+
+
 
 // registration page
 app.get("/register", (req, res) =>{

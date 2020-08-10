@@ -17,7 +17,7 @@
   </header>
   
   <main style="margin: 1em;">
-    <h3>My URLs  *** urls_index ***</h3>
+    <h3>My URLs</h3>
     <table class="table">
       <thead>
         <tr>
@@ -32,7 +32,11 @@
           <tr>
             <!-- the below hyperlink is the website url using interpolation from ejs -->
             <td><a href= "urls/<%= shortURL %> " ><%= shortURL %></a></td>
+<<<<<<< HEAD
             <td><%= urls[shortURL].longURL %></td><!--This is now the user object keys, neds changing-->
+=======
+            <td><%= urls[shortURL].longURL %></td>
+>>>>>>> refactor
             <td>
               <div class="form-example">
                 <form method="GET" action="/urls/<%= shortURL %>/edit"><!-- used to be shortURL-->

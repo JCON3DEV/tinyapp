@@ -1,6 +1,8 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 var cookieParser = require('cookie-parser');
+const bcrypt = require('bcrypt');
+let salt = bcrypt.genSaltSync(10);
 // var cookieSesssion = require('cookie-session');
 const app = express();
 const PORT = 8080; // default port 8080
@@ -115,8 +117,6 @@ app.get("/urls/new", (req, res) => {
 
   let templateVars = {
     user,
-    // longURL: urlDatabase[shortURL]["longURL"], // added TESTING
-    // shortURL // added TESTING
   };
   res.render("urls_new", templateVars);
 });
@@ -243,10 +243,12 @@ app.get("/register", (req, res) =>{
 // registration data recieved from user
 app.post("/register", (req, res) => {
   const idNum = generateRandomString(6,arr);
+  const password = req.body.password;
+  const hashedPassword = bcrypt.hashSync(password,salt);
   const userObject = {
     id: idNum,
     email: req.body.email,
-    password: req.body.password,
+    password: hashedPassword,
   };
   // below should check the new input vs the existing database
   for (let user_id in usersDatabase) {
@@ -319,9 +321,13 @@ app.post("/login", (req, res) =>{
   //1. Receive the values
   const email = req.body.email;
   const password =  req.body.password;
-  // console.log("email;", email);
-  // console.log("pwd");
-  
+  let user = getUserByEmail(email, usersDatabase);
+  console.log("user  && ", user);
+  console.log("usersDatabase[user]", usersDatabase);
+  const verdict = bcrypt.compareSync(password, user["password"] /*  Stored password in user DB */ );
+  console.log("verdict ", verdict);
+
+
   //2. Below checks if the login details are empty, responds w/ error msg
   if (!email || !password) {
     res.status(400)
@@ -330,7 +336,7 @@ app.post("/login", (req, res) =>{
     // function compares email input by user to the database collection
     const user = getUserByEmail(email, usersDatabase);
     // Below checks the presence of a user account & whether pwd is correct
-    if(!user || user.password !== password) {
+    if (!user || !bcrypt.compareSync(password, user["password"])) {
       res.status(403)
         .send("invalid username or password");
     }

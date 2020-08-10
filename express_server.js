@@ -3,7 +3,7 @@ const bodyParser = require("body-parser");
 var cookieParser = require('cookie-parser');
 const bcrypt = require('bcrypt');
 let salt = bcrypt.genSaltSync(10);
-// var cookieSesssion = require('cookie-session');
+var cookieSesssion = require('cookie-session');
 const app = express();
 const PORT = 8080; // default port 8080
 
@@ -21,6 +21,10 @@ function generateRandomString(length, arr) {
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use(cookieSesssion({
+  name: 'session',
+  keys: ['my-secret-dont-tell']
+}));
 app.set('view engine', 'ejs');
 
 // ======================= set up for modules ===================
@@ -95,7 +99,7 @@ app.post(`/urls/:shortURL/edit`, (req, res) => {
   const shortId = req.params.shortURL;
   const newLongId = req.body.longURL;
   
-  if (req.cookies["user_id"] !== req.params.shortURL) {
+  if (/*req.cookies*/req.session["user_id"] !== req.params.shortURL) {
     res.redirect("/urls");
     return;
   };
@@ -108,7 +112,7 @@ app.post(`/urls/:shortURL/edit`, (req, res) => {
 
 //Adding a new get route to allow a form submission
 app.get("/urls/new", (req, res) => {
-  let user_id = req.cookies["user_id"];
+  let user_id = /*req.cookies*/req.session["user_id"];
   let user = usersDatabase[user_id];
   if (!user_id || user_id !== user.id) {
     res.redirect("/login");
@@ -124,7 +128,7 @@ app.get("/urls/new", (req, res) => {
 //Delte method
 app.post('/urls/:shortURL/delete', (req, res) => {
   // TURN this into a function perhaps boolena return take the redirect as param
-  if (req.cookie["user_id"] !== req.params.shortURL) {
+  if (/*req.cookie*/req.session["user_id"] !== req.params.shortURL) {
     res.redirect("/urls");
     return;
   };
@@ -141,7 +145,7 @@ app.get("/u/:shortURL", (req, res) => {
 //This is the edit page
 app.get("/urls/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
-  let user_id = req.cookies["user_id"];
+  let user_id = /*req.cookies*/req.session["user_id"];
   let user = usersDatabase[user_id];
   const templateVars = {
     user,
@@ -176,13 +180,14 @@ app.get("/urls", (req, res) => {
   // };
   // =======================TESTING Below ====================================
   // ## below just sets a cookie testing 
-  res.cookie("visitor", "guest");
-  console.log("cookies; ", req.cookies.visitor); // But this one is  "guest"
-  console.log("cookies; ", req.cookies.user_id); // why is this undefined ??
+  // req.session.visitor = "guest";
+  // res.cookie("visitor", "guest");
+  // console.log("cookies; ", /*req.cookies*/req.session.visitor); // But this one is  "guest"
+  // console.log("cookies; ", /*req.cookies*/req.session.user_id); // why is this undefined ??
   // probs should delete above visitor cookie
   // deleted guest cookie on line  248 // does not work as intended
   // =======================TESTING Above ====================================
-  let user_id = req.cookies["user_id"];
+  let user_id = /*req.cookies*/req.session["user_id"];
   let user = usersDatabase[user_id];
   // // Below blocks access if the user is not logged in;
   if (!user) {
@@ -213,7 +218,7 @@ app.post("/urls", (req, res) => {
   // beleive this need to be the id
   urlDatabase[newShortURL] = {
     longURL : req.body.longURL,
-    userID: req.cookies["user_id"],
+    userID: /*req.cookies*/req.session["user_id"],
   };
   // Below redirects the user to their new short URL address
   res.redirect(`/urls/${newShortURL}`);
@@ -267,7 +272,8 @@ app.post("/register", (req, res) => {
   };
 
   usersDatabase[idNum] = userObject;
-  res.cookie('user_id', idNum);
+  req.session.user_id = idNum;
+  // res.cookie('user_id', idNum);
   res.redirect("/urls");
 });
 
@@ -281,7 +287,8 @@ app.get("/login", (req, res) => {
 
 // logout method // NO logout Get
 app.post("/logout", (req, res) => {
-  res.clearCookie("user_id");
+  req.session = null;
+  // res.clearCookie("user_id"); // delete after cookies are encoded
   res.redirect("/urls");
 });
 ////////////////////////////////////////
@@ -342,7 +349,8 @@ app.post("/login", (req, res) =>{
     }
     else {
       // if username an pwd are correct;
-      res.cookie("user_id", user.id);
+      req.session.user_id = user.id;
+      // res.cookie("user_id", user.id); // old code to be deleted after encoded cookies
       res.redirect("/urls");  
   }
 }
